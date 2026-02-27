@@ -17,7 +17,7 @@ def _get_gcp_credentials() -> Credentials | None:
     try:
         gcp = st.secrets.get("gcp") or {}
         raw = gcp.get("service_account")
-    except Exception:
+    except (KeyError, Exception):
         return None
     if raw is None:
         return None
@@ -171,16 +171,16 @@ def main() -> None:
     st.title("古着商品管理（MVP）")
     st.caption("Phase 2 / P2-01-03: 登録 + 一覧 + 最低限編集")
 
-    with st.sidebar:
-        st.subheader("接続設定")
-        spreadsheet_id = st.text_input(
-            "Spreadsheet ID",
-            value=os.getenv("SPREADSHEET_ID", DEFAULT_SPREADSHEET_ID),
-        ).strip()
-        worksheet_name = st.text_input(
-            "Worksheet名",
-            value=os.getenv("WORKSHEET_NAME", DEFAULT_WORKSHEET_NAME),
-        ).strip()
+    # スプレッドシート設定は Secrets / 環境変数 / デフォルトで自動設定（ユーザーが触る必要なし）
+    try:
+        sheet_cfg = st.secrets.get("spreadsheet") or {}
+        spreadsheet_id = sheet_cfg.get("id") or os.getenv("SPREADSHEET_ID") or DEFAULT_SPREADSHEET_ID
+        worksheet_name = sheet_cfg.get("worksheet") or os.getenv("WORKSHEET_NAME") or DEFAULT_WORKSHEET_NAME
+    except Exception:
+        spreadsheet_id = os.getenv("SPREADSHEET_ID") or DEFAULT_SPREADSHEET_ID
+        worksheet_name = os.getenv("WORKSHEET_NAME") or DEFAULT_WORKSHEET_NAME
+    spreadsheet_id = str(spreadsheet_id or "").strip()
+    worksheet_name = str(worksheet_name or "").strip()
 
     if not spreadsheet_id:
         st.error("Spreadsheet IDは必須です。")
@@ -217,6 +217,7 @@ def main() -> None:
         sale_status = st.selectbox("販売状態 *", ["未出品", "出品済", "売却済"], index=0)
         listed_date = st.date_input("出品日（任意）", value=None)
         sales_channel = st.selectbox("販売先（任意）", options=channel_options, index=0)
+        shipping_cost = st.number_input("送料（任意）", min_value=0, step=100, value=0)
 
         submitted = st.form_submit_button("保存する", type="primary")
 
@@ -231,6 +232,7 @@ def main() -> None:
                 "sale_status": sale_status,
                 "listed_date": listed_date.isoformat() if listed_date else None,
                 "sales_channel": sales_channel or None,
+                "shipping_cost": int(shipping_cost) if shipping_cost > 0 else None,
             }
             created = repo.create_product(payload)
         except Exception as exc:
@@ -343,6 +345,12 @@ def main() -> None:
                 step=100,
                 value=int(selected.sale_price) if selected.sale_price is not None else 0,
             )
+            edit_shipping_cost = st.number_input(
+                "送料（任意）",
+                min_value=0,
+                step=100,
+                value=int(selected.shipping_cost) if selected.shipping_cost is not None else 0,
+            )
             edit_sales_channel = st.selectbox("販売先（任意）", options=channel_options, index=channel_index)
             submitted_edit = st.form_submit_button("更新する")
 
@@ -357,6 +365,7 @@ def main() -> None:
                     "listed_date": edit_listed_date.isoformat() if edit_listed_date else None,
                     "sale_date": edit_sale_date.isoformat() if edit_sale_date else None,
                     "sale_price": int(edit_sale_price) if edit_sale_price > 0 else None,
+                    "shipping_cost": int(edit_shipping_cost) if edit_shipping_cost > 0 else None,
                     "sales_channel": edit_sales_channel or None,
                 }
                 updated = repo.update_product(
@@ -394,6 +403,7 @@ def main() -> None:
             "店舗名": product.store_name,
             "仕入日": product.purchase_date.isoformat(),
             "仕入額": product.purchase_price,
+            "送料": product.shipping_cost or "—",
             "状態": product.sale_status,
             "重要度": _importance_label(product),
         }

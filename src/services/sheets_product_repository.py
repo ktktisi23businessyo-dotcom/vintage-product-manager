@@ -25,6 +25,7 @@ JP_COLUMN_MAP = {
     "sale_date": "売却日",
     "sale_price": "売上金",
     "sales_channel": "販売先",
+    "shipping_cost": "送料",
     "listed_flag": "出品済",
 }
 
@@ -139,6 +140,8 @@ class SheetsProductRepository:
         sale_date = self._to_iso_date(_cell("sale_date"))
         sale_price_str = self._to_int_str(_cell("sale_price"))
         sale_price = int(sale_price_str) if sale_price_str else None
+        shipping_cost_str = self._to_int_str(_cell("shipping_cost"))
+        shipping_cost = int(shipping_cost_str) if shipping_cost_str else None
         listed_flag = _cell("listed_flag").strip()
 
         # Derive sale_status
@@ -160,6 +163,7 @@ class SheetsProductRepository:
             "sale_date": sale_date or "",
             "sale_price": sale_price if sale_price is not None else "",
             "sales_channel": _cell("sales_channel") or None,
+            "shipping_cost": shipping_cost if shipping_cost is not None else "",
             "revision": self._row_revision(row_values),
         }
 
@@ -188,6 +192,8 @@ class SheetsProductRepository:
             updates[col["sale_price"]] = product.sale_price if product.sale_price is not None else ""
         if col.get("sales_channel"):
             updates[col["sales_channel"]] = product.sales_channel or ""
+        if col.get("shipping_cost"):
+            updates[col["shipping_cost"]] = product.shipping_cost if product.shipping_cost is not None else ""
         if col.get("listed_flag"):
             updates[col["listed_flag"]] = "TRUE" if product.sale_status in ("出品済", "売却済") else "FALSE"
         return updates
@@ -253,6 +259,7 @@ class SheetsProductRepository:
         data.setdefault("sale_date", None)
         data.setdefault("sale_price", None)
         data.setdefault("sales_channel", None)
+        data.setdefault("shipping_cost", None)
         product = Product.from_row(data)
 
         ws = self._open_worksheet()
@@ -293,6 +300,8 @@ class SheetsProductRepository:
                     row_data[c - 1] = product.sale_price if product.sale_price is not None else ""
                 elif k == "sales_channel":
                     row_data[c - 1] = product.sales_channel or ""
+                elif k == "shipping_cost":
+                    row_data[c - 1] = product.shipping_cost if product.shipping_cost is not None else ""
                 elif k == "listed_flag":
                     row_data[c - 1] = "TRUE" if product.sale_status in ("出品済", "売却済") else "FALSE"
             ws.append_row(row_data)
