@@ -1,11 +1,50 @@
 from __future__ import annotations
 
+import json
 import os
+import tempfile
 from datetime import date
+from typing import Any
 
 import streamlit as st
+from google.oauth2.service_account import Credentials
 
 from src.services.sheets_product_repository import ExternalUpdateDetectedError, SheetsProductRepository
+
+
+def _get_gcp_credentials() -> Credentials | None:
+    """Streamlit Cloud: Secrets から Google 認証情報を取得。ローカルでは None を返す。"""
+    try:
+        gcp = st.secrets.get("gcp") or {}
+        raw = gcp.get("service_account")
+    except Exception:
+        return None
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except json.JSONDecodeError:
+            return None
+    if not isinstance(raw, dict):
+        return None
+    # TOML 経由だと private_key の \n が文字列 "\\n" になることがあるため正規化
+    info: dict[str, Any] = dict(raw)
+    if "private_key" in info and isinstance(info["private_key"], str):
+        info["private_key"] = info["private_key"].replace("\\n", "\n")
+    try:
+        creds = Credentials.from_service_account_info(
+            info, scopes=["https://www.googleapis.com/auth/spreadsheets"]
+        )
+        # 念のため env にも設定（default() のフォールバック用）
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(info, f, ensure_ascii=False)
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = f.name
+        return creds
+    except Exception:
+        return None
+
+
 from src.utils.logger import get_app_logger, get_audit_logger, get_error_logger
 
 
@@ -151,7 +190,10 @@ def main() -> None:
         return
 
     try:
-        repo = SheetsProductRepository(spreadsheet_id, worksheet_name)
+        gcp_creds = _get_gcp_credentials()
+        repo = SheetsProductRepository(
+            spreadsheet_id, worksheet_name, credentials=gcp_creds
+        )
     except Exception as exc:
         ERROR_LOGGER.exception("Sheet connection failed: spreadsheet_id=%s worksheet_name=%s", spreadsheet_id, worksheet_name)
         st.error(f"シート接続に失敗しました: {exc}")

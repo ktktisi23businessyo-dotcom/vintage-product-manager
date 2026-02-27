@@ -11,6 +11,7 @@ from typing import Any
 
 import gspread
 from google.auth import default
+from google.oauth2.service_account import Credentials
 
 from src.models.product import Product
 
@@ -34,16 +35,26 @@ class ExternalUpdateDetectedError(RuntimeError):
 
 
 class SheetsProductRepository:
-    def __init__(self, spreadsheet_id: str, worksheet_name: str) -> None:
+    def __init__(
+        self,
+        spreadsheet_id: str,
+        worksheet_name: str,
+        *,
+        credentials: Credentials | None = None,
+    ) -> None:
         self._spreadsheet_id = spreadsheet_id
         self._worksheet_name = worksheet_name
+        self._credentials = credentials
         self._worksheet: gspread.Worksheet | None = None
         self._jp_col_map: dict[str, int] | None = None
 
     def _open_worksheet(self) -> gspread.Worksheet:
         if self._worksheet is not None:
             return self._worksheet
-        creds, _ = default(scopes=["https://www.googleapis.com/auth/spreadsheets"])
+        if self._credentials is not None:
+            creds = self._credentials
+        else:
+            creds, _ = default(scopes=["https://www.googleapis.com/auth/spreadsheets"])
         client = gspread.authorize(creds)
         spreadsheet = client.open_by_key(self._spreadsheet_id)
         self._worksheet = spreadsheet.worksheet(self._worksheet_name)
@@ -364,7 +375,10 @@ class SheetsProductRepository:
 
     def list_sales_channels(self) -> list[str]:
         """List sales channels from 手数料リスト worksheet, column 1."""
-        creds, _ = default(scopes=["https://www.googleapis.com/auth/spreadsheets"])
+        if self._credentials is not None:
+            creds = self._credentials
+        else:
+            creds, _ = default(scopes=["https://www.googleapis.com/auth/spreadsheets"])
         client = gspread.authorize(creds)
         spreadsheet = client.open_by_key(self._spreadsheet_id)
         try:
