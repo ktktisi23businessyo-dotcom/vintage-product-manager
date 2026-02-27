@@ -49,6 +49,7 @@ class Product:
     sale_price: int | None = None
     sales_channel: str | None = None
     shipping_cost: int | None = None  # 送料
+    handling_fee: int | None = None  # 手数料
     is_archived: bool = False
     revision: str = ""
     updated_at: datetime | None = None
@@ -66,6 +67,7 @@ class Product:
         self.sale_date = _to_date(self.sale_date, "sale_date", required=False)
         self.sale_price = _to_int(self.sale_price, "sale_price", required=False)
         self.shipping_cost = _to_int(self.shipping_cost, "shipping_cost", required=False)
+        self.handling_fee = _to_int(self.handling_fee, "handling_fee", required=False)
         if self.sale_status not in ALLOWED_SALE_STATUS:
             raise ValueError(f"sale_status must be one of {sorted(ALLOWED_SALE_STATUS)}")
         if self.purchase_price < 0:
@@ -74,13 +76,16 @@ class Product:
             raise ValueError("sale_price must be >= 0")
         if self.shipping_cost is not None and self.shipping_cost < 0:
             raise ValueError("shipping_cost must be >= 0")
+        if self.handling_fee is not None and self.handling_fee < 0:
+            raise ValueError("handling_fee must be >= 0")
 
     @property
     def profit(self) -> int | None:
         if self.sale_price is None:
             return None
         ship = self.shipping_cost or 0
-        return self.sale_price - self.purchase_price - ship
+        fee = self.handling_fee or 0
+        return self.sale_price - self.purchase_price - ship - fee
 
     def to_row(self) -> dict[str, Any]:
         return {
@@ -95,6 +100,7 @@ class Product:
             "sale_price": self.sale_price if self.sale_price is not None else "",
             "sales_channel": self.sales_channel or "",
             "shipping_cost": self.shipping_cost if self.shipping_cost is not None else "",
+            "handling_fee": self.handling_fee if self.handling_fee is not None else "",
             "is_archived": self.is_archived,
             "revision": self.revision,
             "updated_at": self.updated_at.isoformat() if self.updated_at else "",
@@ -114,6 +120,7 @@ class Product:
             sale_price=row.get("sale_price", ""),
             sales_channel=str(row.get("sales_channel", "")).strip() or None,
             shipping_cost=row.get("shipping_cost", ""),
+            handling_fee=row.get("handling_fee", ""),
             is_archived=str(row.get("is_archived", "")).lower() in {"true", "1", "yes"},
             revision=str(row.get("revision", "")).strip(),
             updated_at=None,

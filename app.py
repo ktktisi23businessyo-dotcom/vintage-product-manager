@@ -218,6 +218,7 @@ def main() -> None:
         listed_date = st.date_input("出品日（任意）", value=None)
         sales_channel = st.selectbox("販売先（任意）", options=channel_options, index=0)
         shipping_cost = st.number_input("送料（任意）", min_value=0, step=100, value=0)
+        handling_fee = st.number_input("手数料（任意）", min_value=0, step=100, value=0)
 
         submitted = st.form_submit_button("保存する", type="primary")
 
@@ -233,6 +234,7 @@ def main() -> None:
                 "listed_date": listed_date.isoformat() if listed_date else None,
                 "sales_channel": sales_channel or None,
                 "shipping_cost": int(shipping_cost) if shipping_cost > 0 else None,
+                "handling_fee": int(handling_fee) if handling_fee > 0 else None,
             }
             created = repo.create_product(payload)
         except Exception as exc:
@@ -351,6 +353,12 @@ def main() -> None:
                 step=100,
                 value=int(selected.shipping_cost) if selected.shipping_cost is not None else 0,
             )
+            edit_handling_fee = st.number_input(
+                "手数料（任意）",
+                min_value=0,
+                step=100,
+                value=int(selected.handling_fee) if selected.handling_fee is not None else 0,
+            )
             edit_sales_channel = st.selectbox("販売先（任意）", options=channel_options, index=channel_index)
             submitted_edit = st.form_submit_button("更新する")
 
@@ -366,6 +374,7 @@ def main() -> None:
                     "sale_date": edit_sale_date.isoformat() if edit_sale_date else None,
                     "sale_price": int(edit_sale_price) if edit_sale_price > 0 else None,
                     "shipping_cost": int(edit_shipping_cost) if edit_shipping_cost > 0 else None,
+                    "handling_fee": int(edit_handling_fee) if edit_handling_fee > 0 else None,
                     "sales_channel": edit_sales_channel or None,
                 }
                 updated = repo.update_product(
@@ -404,6 +413,7 @@ def main() -> None:
             "仕入日": product.purchase_date.isoformat(),
             "仕入額": product.purchase_price,
             "送料": product.shipping_cost or "—",
+            "手数料": product.handling_fee or "—",
             "状態": product.sale_status,
             "重要度": _importance_label(product),
         }
