@@ -341,7 +341,7 @@ def main() -> None:
                 value=selected.listed_date,
             )
             edit_sale_date = st.date_input(
-                "販売日（任意）",
+                "売却日（任意）",
                 value=selected.sale_date,
             )
             edit_sale_price = st.number_input(
