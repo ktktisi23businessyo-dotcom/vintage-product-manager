@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 from datetime import date
 from typing import Any
@@ -105,11 +106,20 @@ def _apply_list_filters(
     return filtered
 
 
-def _product_no_sort_key(product_no: str) -> tuple[int | None, str]:
-    """商品Noを数値順でソートするためのキー。P1, P2, P10 → 1, 2, 10 の順に。"""
-    if product_no.startswith("P") and product_no[1:].isdigit():
-        return (int(product_no[1:]), product_no)
-    return (None, product_no)  # 非標準形式は後ろに
+def _product_no_sort_key(product_no: str) -> tuple[float, str]:
+    """商品Noを数値順でソートするためのキー。1, 2, 10 の順になる。"""
+    s = str(product_no).strip()
+    # P1, P00001, P10 形式
+    if s.upper().startswith("P") and len(s) > 1 and s[1:].isdigit():
+        return (int(s[1:]), s)
+    # 1, 2, 10 形式（数字のみ）
+    if s.isdigit():
+        return (int(s), s)
+    # 先頭の連続数字を抽出（例: No.123, 商品1）
+    m = re.search(r"^\D*(\d+)", s)
+    if m:
+        return (int(m.group(1)), s)
+    return (float("inf"), s)  # 数値なしは後ろに
 
 
 def _sort_products(products: list, sort_rule: str) -> list:
