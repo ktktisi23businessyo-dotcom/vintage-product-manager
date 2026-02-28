@@ -328,7 +328,8 @@ def main() -> None:
         if selected.sales_channel and selected.sales_channel not in channel_options:
             channel_options = channel_options + [selected.sales_channel]
         channel_index = channel_options.index(selected.sales_channel) if selected.sales_channel in channel_options else 0
-        with st.form("edit_product_form"):
+        # 選択商品ごとにフォームキーを変え、選択変更時に確実に情報を反映
+        with st.form(key=f"edit_product_form_{selected.product_no}"):
             edit_name = st.text_input("商品名（編集） *", value=selected.name)
             edit_store_name = st.text_input("店舗名（編集） *", value=selected.store_name)
             edit_purchase_date = st.date_input("仕入日（編集） *", value=selected.purchase_date)
