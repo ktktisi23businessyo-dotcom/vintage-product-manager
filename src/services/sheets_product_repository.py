@@ -15,19 +15,20 @@ from google.oauth2.service_account import Credentials
 
 from src.models.product import Product
 
-JP_COLUMN_MAP = {
-    "product_no": "商品No",
-    "name": "商品名",
-    "store_name": "店舗名",
-    "purchase_date": "仕入れ日付",
-    "purchase_price": "仕入額",
-    "listed_date": "出品日",
-    "sale_date": "売却日",
-    "sale_price": "売上金",
-    "sales_channel": "販売先",
-    "shipping_cost": "送料",
-    "handling_fee": "手数料",
-    "listed_flag": "出品済",
+# 各フィールドに対応するスプレッドシートのヘッダー名（複数可・先頭が優先）
+JP_HEADERS: dict[str, list[str]] = {
+    "product_no": ["商品No"],
+    "name": ["商品名"],
+    "store_name": ["店舗名"],
+    "purchase_date": ["仕入れ日付", "仕入日付"],
+    "purchase_price": ["仕入額", "仕入れ額"],
+    "listed_date": ["出品日"],
+    "sale_date": ["売却日"],
+    "sale_price": ["売上金"],
+    "sales_channel": ["販売先"],
+    "shipping_cost": ["送料"],
+    "handling_fee": ["手数料"],
+    "listed_flag": ["出品済"],
 }
 
 
@@ -72,8 +73,10 @@ class SheetsProductRepository:
         self._jp_col_map = {}
         for idx, raw_header in enumerate(row3):
             h = (raw_header or "").replace("\n", "").strip()
-            for en_key, jp_header in JP_COLUMN_MAP.items():
-                if h == jp_header:
+            for en_key, headers in JP_HEADERS.items():
+                if en_key in self._jp_col_map:
+                    continue  # 既に設定済みはスキップ
+                if h in headers:
                     self._jp_col_map[en_key] = idx + 1
                     break
 

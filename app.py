@@ -209,9 +209,11 @@ def main() -> None:
         st.write(flash_record)
 
     st.markdown("### 1.商品登録")
-    with st.form("create_product_form"):
-        name = st.text_input("商品名 *")
-        store_name = st.text_input("店舗名 *")
+    # 保存成功後にフォームをリセットするため、キーをインクリメント
+    _form_key = st.session_state.get("create_form_key", 0)
+    with st.form(key=f"create_product_form_{_form_key}"):
+        name = st.text_input("商品名 *", value="")
+        store_name = st.text_input("店舗名 *", value="")
         purchase_date = st.date_input("仕入日 *", value=date.today())
         purchase_price = st.number_input("仕入額 *", min_value=0, step=100, value=0)
         sale_status = st.selectbox("販売状態 *", ["未出品", "出品済", "売却済"], index=0)
@@ -251,6 +253,7 @@ def main() -> None:
                 "purchase_price": created.purchase_price,
                 "sale_status": created.sale_status,
             }
+            st.session_state["create_form_key"] = _form_key + 1  # フォームを空欄にリセット
             st.rerun()
     else:
         st.info("必須項目を入力して「保存する」を押してください。")
