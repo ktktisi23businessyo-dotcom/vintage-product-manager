@@ -105,6 +105,13 @@ def _apply_list_filters(
     return filtered
 
 
+def _product_no_sort_key(product_no: str) -> tuple[int | None, str]:
+    """商品Noを数値順でソートするためのキー。P1, P2, P10 → 1, 2, 10 の順に。"""
+    if product_no.startswith("P") and product_no[1:].isdigit():
+        return (int(product_no[1:]), product_no)
+    return (None, product_no)  # 非標準形式は後ろに
+
+
 def _sort_products(products: list, sort_rule: str) -> list:
     status_rank = {"未出品": 0, "出品済": 1, "売却済": 2}
     if sort_rule == "仕入日（新しい順）":
@@ -118,7 +125,7 @@ def _sort_products(products: list, sort_rule: str) -> list:
     if sort_rule == "販売状態（未出品→出品済→売却済）":
         return sorted(products, key=lambda p: status_rank.get(p.sale_status, 99))
     if sort_rule == "商品No（昇順）":
-        return sorted(products, key=lambda p: str(p.product_no))
+        return sorted(products, key=lambda p: _product_no_sort_key(p.product_no))
     return products
 
 
